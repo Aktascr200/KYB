@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Know Your Boundaries — Scrut Design Quiz</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #080B12; overflow-x: hidden; }
+    #root { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script>
+
+// localStorage-based storage shim for standalone deployment
+window.storage = window.storage || {
+  async get(key, shared) {
+    try {
+      const v = localStorage.getItem(key);
+      return v ? { key, value: v, shared: !!shared } : null;
+    } catch(e) { return null; }
+  },
+  async set(key, value, shared) {
+    try {
+      localStorage.setItem(key, value);
+      return { key, value, shared: !!shared };
+    } catch(e) { return null; }
+  },
+  async delete(key, shared) {
+    try { localStorage.removeItem(key); return { key, deleted: true, shared: !!shared }; }
+    catch(e) { return null; }
+  },
+  async list(prefix, shared) {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!prefix || k.startsWith(prefix)) keys.push(k);
+    }
+    return { keys, prefix, shared: !!shared };
+  }
+};
+
+  </script>
+  <script type="text/babel" data-type="module">
+const { useState, useEffect, useRef, useCallback } = React;
+
+
+const QUESTIONS = [
+  {
+    id: 1, cat: "Problem Definition", difficulty: "Easy",
+    scenario: "Neha (PM) shares a PRD for a new Controls feature. The Problem Statement reads: \"We need to add a bulk-action dropdown to the Controls table so users can update multiple statuses at once.\"",
+    question: "As the designer on this pod, what should you do?",
+    options: [
+      "Open Figma and start designing the dropdown — Neha gave clear specs",
+      "Push back — the statement describes a UI component, not a user problem. Ask Neha to reframe it as the user's pain.",
+      "Design the dropdown and also add a few alternative options for Neha to choose from",
+      "Forward it to the dev team and ask them to build a prototype first"
+    ],
+    correct: 1,
+    explain: "\"Add a dropdown\" is a solution, not a problem. The designer must ask: What's the user trying to accomplish? Why is the current experience painful? A valid problem statement would be: \"Compliance managers spend 20–40 min manually updating 50+ controls one by one.\""
+  },
+  {
+    id: 2, cat: "Target Users", difficulty: "Easy",
+    scenario: "Arjun (PM) sends over a PRD for a new dashboard widget. Under Target Users, it says: \"This feature is for all users of the Scrut platform.\"",
+    question: "Should you proceed with the design?",
+    options: [
+      "Yes — designing for everyone means the feature will be widely useful",
+      "No — \"all users\" is not a persona. Ask Arjun to name the specific role (e.g., Compliance Manager vs CISO), plan tier, and typical context.",
+      "Yes, but design for Admin users first since they have the most permissions",
+      "Skip this section — target users don't really affect the design"
+    ],
+    correct: 1,
+    explain: "A CISO needs a summary view; a Compliance Manager needs action-oriented detail. These are different designs. Without a named persona, the designer cannot make hierarchy, prominence, or navigation decisions. This is a Hard Block."
+  },
+  {
+    id: 3, cat: "Solution Ownership", difficulty: "Medium",
+    scenario: "Meera (PM) writes in the Functional Description: \"Add a modal with two tabs — 'By Control' and 'By Framework'. Each tab has a table with checkboxes. Clicking 'Bulk Assign' opens a second modal with a dropdown of assignees.\"",
+    question: "What's wrong here?",
+    options: [
+      "Nothing — this level of detail helps the designer work faster",
+      "Meera is prescribing UI components. The designer should ask her to reframe as outcomes and constraints instead.",
+      "The dropdown is the wrong component — it should be a search field",
+      "The design is fine but Meera should have used Figma instead of words"
+    ],
+    correct: 1,
+    explain: "PMs own constraints and outcomes: 'Must work for 1–200 controls without navigating away from the table.' Designers own the interaction pattern. When a PM specifies modals, tabs, and dropdowns, the designer loses the ability to explore if a floating action bar, side panel, or inline editing is better."
+  },
+  {
+    id: 4, cat: "Pushback", difficulty: "Medium",
+    scenario: "You've flagged that Karan's (PM) PRD is missing evidence for the problem statement. Karan replies on Slack: \"Let's not block on this — just start designing with what we have, we'll get the data later.\"",
+    question: "How should you respond?",
+    options: [
+      "Start designing — Karan probably has verbal context you don't",
+      "Hold firm. Document the block in the PRD's Open Questions section with your name, a deadline, and the consequence if unresolved. Escalate to Design Lead after 48 hours if needed.",
+      "Compromise — do rough wireframes but don't invest in high-fidelity yet",
+      "Escalate directly to the CEO"
+    ],
+    correct: 1,
+    explain: "Under the new model, designers have the authority — and responsibility — to not start on a PRD with unresolved Hard Blocks. The protocol: document formally in the PRD (not just Slack), give a deadline ('I need this by Thursday EOD or kickoff shifts by 3 days'), escalate through Design Lead if unresolved."
+  },
+  {
+    id: 5, cat: "User Flows", difficulty: "Medium",
+    scenario: "Priya (PM) describes the user flow for a new Evidence Upload feature as: \"User goes to Evidence page → clicks Upload → selects file → file uploads → done.\"",
+    question: "What should you flag before starting design?",
+    options: [
+      "Nothing — this covers the main flow clearly",
+      "Missing: What happens when the file is too large? When the upload fails? When the user has no upload permission? What's the empty state before any evidence exists?",
+      "The flow should include the color scheme for the upload button",
+      "Priya should have drawn this in Figma instead of writing it"
+    ],
+    correct: 1,
+    explain: "A PM's conceptual flow covers the happy path. The designer owns all detailed states — but needs the PM to have documented at least one alternate/error path. Key gaps here: file size limit, API failure, permission-denied (Viewer role), empty state, upload progress state, and post-upload confirmation."
+  },
+  {
+    id: 6, cat: "RBAC", difficulty: "Hard",
+    scenario: "Ravi (PM) marks RBAC as 'Yes — Impacted' in the Product Impact Checklist for the Vendor Risk Score feature. But there is no permission model anywhere in the PRD. You ask Ravi and he says: \"Just design for the Admin view, we'll figure out the other roles later.\"",
+    question: "What's the right call?",
+    options: [
+      "Design for Admin only and add a note to revisit",
+      "Hard Block. Insist Ravi defines which roles (Admin / Editor / Viewer / Guest) can see and do what before you start. The permission model drives what renders in the UI.",
+      "Design all possible RBAC variations and let Ravi pick later",
+      "Ask the backend team what roles exist in the codebase"
+    ],
+    correct: 1,
+    explain: "RBAC isn't a detail to add later — it determines which UI elements exist at all. A Viewer might not see the action bar. A Guest might not see the feature. Designing for 'Admin only' then retrofitting other roles always causes rework. This is a Hard Block."
+  },
+  {
+    id: 7, cat: "Scope Creep", difficulty: "Hard",
+    scenario: "You're midway through designing the Bulk Assignment feature. While mapping the flow, you realize tag-based filtering is needed for it to work properly — but the PRD explicitly lists tag-based filtering as 'Out of Scope for v1'.",
+    question: "What do you do?",
+    options: [
+      "Add it to your design — it's clearly needed",
+      "Raise it immediately with the PM. Present two options: (A) include in v1 with a timeline impact, or (B) defer it and design a degraded state for v1.",
+      "Skip it — if the PRD says out of scope, it's out of scope",
+      "Ask the developer to build it anyway since it's small"
+    ],
+    correct: 1,
+    explain: "Scope decisions belong to the PM. The designer's job is to flag the gap the moment it's discovered, present clear options with tradeoffs, and let the PM decide. Never silently add scope, and never silently ignore a dependency you've identified."
+  },
+  {
+    id: 8, cat: "Copy & Labels", difficulty: "Easy",
+    scenario: "You're designing the Bulk Assignment confirmation state. You think 'Delegate' is a better CTA label than 'Assign Owner' (which Neha wrote in the PRD). You also need to write the error message for when assignment fails.",
+    question: "Which of these is within your ownership?",
+    options: [
+      "Both — all text in the UI is design's domain",
+      "The error message is yours. The CTA label change must be raised as a proposal to Neha — core product terminology is PM-owned.",
+      "Neither — all copy must come from the PM",
+      "The CTA label is yours since it's a button, but the error message needs PM approval"
+    ],
+    correct: 1,
+    explain: "Designers own UI micro-copy: error messages, empty states, tooltips, placeholders, toasts. PMs own product terminology that appears in documentation and across the product. Changing 'Assign Owner' to 'Delegate' affects product-wide consistency — raise it as a suggestion, don't ship it unilaterally."
+  },
+  {
+    id: 9, cat: "Research", difficulty: "Hard",
+    scenario: "Sanya (Designer) runs 3 user interviews for the Controls bulk-action feature. All 3 users instinctively tried Ctrl+Click to multi-select — none knew what a command palette was. The PM (Arjun) had assumed command palette was the preferred approach.",
+    question: "What should Sanya do with these findings?",
+    options: [
+      "Ignore the research — the PRD is already approved and the sprint has started",
+      "Present findings to Arjun + Tech Lead. Pause the current direction and request PRD update before continuing to handoff.",
+      "Redesign silently using the checkbox approach and surprise Arjun at review",
+      "Run 10 more interviews to get a bigger sample size before saying anything"
+    ],
+    correct: 1,
+    explain: "When research invalidates a PRD assumption, the designer must pause and present findings formally. The PRD needs to be updated before design goes to dev. Redesigning silently creates misalignment; ignoring research wastes the effort. Present, align, then proceed."
+  },
+  {
+    id: 10, cat: "Handoff", difficulty: "Medium",
+    scenario: "It's handoff day. Karan's (PM) PRD is complete with acceptance criteria. Your Figma file covers the happy path and the main alternate flow. You haven't designed the empty state, the API error state, or the Viewer-role permission-denied state.",
+    question: "Should you proceed to handoff?",
+    options: [
+      "Yes — devs can use their judgement for edge cases",
+      "No. Your design spec must cover every state — happy path, empty, error, loading, and permission-based — before handoff. Incomplete design causes inconsistent dev interpretation.",
+      "Yes, but add a Figma comment saying 'TBD' on the missing states",
+      "Yes — those are minor states that can be patched after launch"
+    ],
+    correct: 1,
+    explain: "Incomplete design handoff is as costly as an incomplete PRD. Every state left undesigned becomes a state the developer interprets alone — leading to inconsistency, bugs, and post-launch patches. Handoff is a joint quality gate."
+  },
+  {
+    id: 11, cat: "Metrics", difficulty: "Medium",
+    scenario: "Priya (PM) defines success metrics: 40% adoption in 30 days, 30% reduction in task time. She asks you: \"Anything to add from design's side?\"",
+    question: "What should you contribute?",
+    options: [
+      "Nothing — metrics are entirely the PM's responsibility",
+      "UX-specific signals: first-attempt task completion rate (target >85%), undo usage rate (if >15%, the confirmation flow may need redesign), and flow drop-off point analysis",
+      "Increase the adoption target to 60% to be more ambitious",
+      "Add 'NPS score' as a success metric"
+    ],
+    correct: 1,
+    explain: "Designers don't own success metrics but contribute UX-level signals that PM metrics won't capture. Undo rate tells you if the confirmation flow works. Drop-off analysis tells you where users abandon. First-attempt completion tells you if the flow is intuitive. These complement business metrics."
+  },
+  {
+    id: 12, cat: "Pushback", difficulty: "Easy",
+    scenario: "You need to push back on Arjun's PRD. You're about to message him on Slack: \"Hey Arjun, this PRD isn't ready — I have a bunch of questions.\"",
+    question: "What's wrong with this message?",
+    options: [
+      "Nothing — it's direct and honest",
+      "It's too vague. Name the specific gap, the design decision it blocks, a deadline, and the consequence. Write it in the PRD's Open Questions section — not just Slack.",
+      "It's too harsh — soften the language",
+      "You should call instead of messaging"
+    ],
+    correct: 1,
+    explain: "Effective pushback structure: (1) Gap: 'The Target Users section lists all users.' (2) Impact: 'I cannot design the information hierarchy without a named persona.' (3) Ask: 'I need this by Thursday EOD.' (4) Consequence: 'If unresolved, kickoff shifts by 3 days.' Always document in the PRD, not just Slack."
+  },
+  {
+    id: 13, cat: "Ownership", difficulty: "Hard",
+    scenario: "During the sprint, a developer (Vikram) asks you in standup: \"Should we defer tag-based filtering to v2? It's adding complexity.\"",
+    question: "How should you respond?",
+    options: [
+      "Yes, defer it — less scope means faster delivery",
+      "This is a PM scope decision. Tell Vikram you'll flag it to the PM, then raise it with Meera (PM) to decide.",
+      "No, keep it — the design already accounts for it",
+      "Let Vikram decide since he understands the technical cost"
+    ],
+    correct: 1,
+    explain: "What ships vs what gets deferred is a PM decision. Designers can flag complexity and tradeoffs, but they don't unilaterally make scope calls. Redirect the developer to the PM. Your job: present the design impact of both options so the PM can decide informed."
+  },
+  {
+    id: 14, cat: "Impact Checklist", difficulty: "Medium",
+    scenario: "You open Ravi's PRD for a new Trust Vault feature. The Product Impact Checklist has 4 rows left completely blank — Notifications, Audit Logs, Mixpanel, and Task Center.",
+    question: "What should you do?",
+    options: [
+      "Assume they're all 'N/A' and proceed",
+      "Soft Block. Ask Ravi to mark every row Yes / No / N/A. Blank rows mean you can't assess design scope — Notifications alone could add 3 design surfaces.",
+      "Only flag the Notifications row since that's the most design-heavy",
+      "Fill them in yourself based on your best guess"
+    ],
+    correct: 1,
+    explain: "Each 'Yes' in the checklist has direct design implications. Notifications = in-app + email + Slack states. Audit Logs = a read-only view surface. Task Center = a new card design. Blank rows aren't 'no' — they're unknown. The designer must ask, because a surprise 'Yes' mid-sprint causes scope creep."
+  },
+  {
+    id: 15, cat: "Open Questions", difficulty: "Hard",
+    scenario: "Neha's PRD has 5 Open Questions. Three are: (Q1) \"Can Viewer role trigger bulk assignment?\" (Q2) \"Is tag-based assign in v1 or v2?\" (Q3) \"What illustration style for empty states — abstract or isometric?\"",
+    question: "Which questions block you from starting design?",
+    options: [
+      "All three — every question must be answered first",
+      "Q1 and Q2 are Hard Blocks (RBAC affects what renders; scope affects how many flows to design). Q3 is advisory — illustration style can be decided during design.",
+      "None — you can make assumptions and check later",
+      "Only Q3 — visual style is the designer's biggest concern"
+    ],
+    correct: 1,
+    explain: "The test: does getting this wrong mean the design has to be substantially rethought? Q1 (RBAC) determines which UI elements exist. Q2 (scope) determines how many interaction patterns to build. Getting either wrong = rework. Q3 (style) can be explored and changed cheaply during design."
+  },
+  {
+    id: 16, cat: "Solution Ownership", difficulty: "Easy",
+    scenario: "Arjun (PM) writes constraints for the report export feature: \"Must support PDF and CSV. Must complete within 10 seconds for 500 rows. Bulk export is out of scope.\"",
+    question: "Given these constraints, what is the designer's job?",
+    options: [
+      "Implement exactly what Arjun described — these are instructions",
+      "These are constraints, not instructions. The designer decides the interaction pattern: inline download vs background job + notification, progress indicator design, success/error states, and the full export flow.",
+      "Ask Arjun to also specify the button placement and icon",
+      "Pass these constraints directly to the developer — no design needed"
+    ],
+    correct: 1,
+    explain: "PMs define what must happen (formats, performance, scope). Designers decide how it happens in the UI. Should the export be instant-download or a background job with a notification? What does the progress state look like? What if it fails? The constraints give the boundaries; the designer owns everything inside."
+  },
+  {
+    id: 17, cat: "Problem Definition", difficulty: "Medium",
+    scenario: "Priya's PRD says: \"Users want to track vendor risk scores over time.\" No evidence link. No customer names. No Mixpanel data.",
+    question: "Should you start designing?",
+    options: [
+      "Yes — the problem seems reasonable and obvious",
+      "No — Hard Block. Ask Priya for at least one evidence link (customer feedback, support ticket, Mixpanel data). Without evidence, the designer is solving an assumed problem.",
+      "Yes, but design a simple version first to test",
+      "Ask the customer success team yourself for evidence"
+    ],
+    correct: 1,
+    explain: "Unsupported problem statements lead to designs that solve imagined pain. Evidence also tells the designer which user segment to prioritise, what 'done' looks like, and how severe the problem is. Finding evidence is the PM's job — the designer's job is to insist it exists before committing design time."
+  },
+  {
+    id: 18, cat: "Pushback", difficulty: "Hard",
+    scenario: "You've been getting incomplete PRDs from Karan (PM) for the third sprint in a row. Each time you flag gaps, he resolves them eventually, but the pattern is wasting your review cycles.",
+    question: "What's the appropriate escalation?",
+    options: [
+      "Confront Karan directly about the pattern",
+      "Raise it with the Design Lead, who raises it with the PM Lead. Patterns of incomplete PRDs are a process issue, not a personal one — addressed in retro or 1:1, not by the designer confronting the PM.",
+      "Start accepting the incomplete PRDs to maintain the relationship",
+      "Refuse to work with Karan until he improves"
+    ],
+    correct: 1,
+    explain: "Individual pushback handles individual PRDs. Patterns need a process fix. The Design Lead raises it with the PM Lead — not to blame Karan, but to identify whether it's a training gap, a workload issue, or a template problem. Escalation is structural, not personal."
+  },
+];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const CATS = [...new Set(QUESTIONS.map(q => q.cat))];
+const CAT_COLORS = {
+  "Problem Definition": { bg: "#C026D3", light: "#FAE8FF" },
+  "Target Users": { bg: "#0891B2", light: "#CFFAFE" },
+  "Solution Ownership": { bg: "#D97706", light: "#FEF3C7" },
+  "Pushback": { bg: "#DC2626", light: "#FEE2E2" },
+  "User Flows": { bg: "#059669", light: "#D1FAE5" },
+  "RBAC": { bg: "#4F46E5", light: "#E0E7FF" },
+  "Scope Creep": { bg: "#EA580C", light: "#FFF7ED" },
+  "Copy & Labels": { bg: "#0D9488", light: "#CCFBF1" },
+  "Research": { bg: "#7C3AED", light: "#EDE9FE" },
+  "Handoff": { bg: "#BE185D", light: "#FCE7F3" },
+  "Metrics": { bg: "#2563EB", light: "#DBEAFE" },
+  "Impact Checklist": { bg: "#CA8A04", light: "#FEF9C3" },
+  "Open Questions": { bg: "#9333EA", light: "#F3E8FF" },
+  "Ownership": { bg: "#0369A1", light: "#E0F2FE" },
+};
+
+function useStorage(key, fallback) {
+  const [val, setVal] = useState(fallback);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(key, true);
+        if (r && r.value) setVal(JSON.parse(r.value));
+      } catch (e) {}
+      setLoaded(true);
+    })();
+  }, [key]);
+  const save = async (v) => {
+    setVal(v);
+    try { await window.storage.set(key, JSON.stringify(v), true); } catch(e) {}
+  };
+  return [val, save, loaded];
+}
+
+export default function App() {
+  const [phase, setPhase] = useState("home");
+  const [name, setName] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [qi, setQi] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [revealed, setRevealed] = useState(false);
+  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(25);
+  const [timerOn, setTimerOn] = useState(false);
+  const timerRef = useRef(null);
+  const [leaderboard, setLeaderboard, lbLoaded] = useStorage("scrut-quiz-leaderboard-v2", []);
+
+  useEffect(() => {
+    if (timerOn && timeLeft > 0) {
+      timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    } else if (timerOn && timeLeft === 0) {
+      doAnswer(null);
+    }
+    return () => clearTimeout(timerRef.current);
+  }, [timerOn, timeLeft]);
+
+  const startGame = () => {
+    if (!name.trim()) return;
+    const qs = shuffle(QUESTIONS).slice(0, 12);
+    setQuestions(qs);
+    setQi(0);
+    setScore(0);
+    setAnswers([]);
+    setSelected(null);
+    setRevealed(false);
+    setTimeLeft(25);
+    setTimerOn(true);
+    setPhase("play");
+  };
+
+  const doAnswer = useCallback((idx) => {
+    setTimerOn(false);
+    clearTimeout(timerRef.current);
+    setSelected(idx);
+    setRevealed(true);
+    const q = questions[qi];
+    const ok = idx === q.correct;
+    const tb = Math.max(0, Math.floor(timeLeft / 2.5));
+    const pts = ok ? 10 + tb : 0;
+    setScore(s => s + pts);
+    setAnswers(a => [...a, { qId: q.id, cat: q.cat, ok, pts, sel: idx }]);
+  }, [qi, questions, timeLeft]);
+
+  const nextQ = async () => {
+    if (qi + 1 >= questions.length) {
+      const finalScore = answers.reduce((s, a) => s + a.pts, 0) + (selected !== null && selected === questions[qi]?.correct ? 10 + Math.max(0, Math.floor(timeLeft / 2.5)) : 0);
+      const correctCount = answers.filter(a => a.ok).length + (selected === questions[qi]?.correct ? 1 : 0);
+      // Only use the state `score` since it's already been updated in doAnswer
+      const entry = { name: name.trim(), score, correct: correctCount, total: questions.length, date: new Date().toISOString() };
+      const updated = [...leaderboard, entry].sort((a, b) => b.score - a.score).slice(0, 20);
+      await setLeaderboard(updated);
+      setPhase("results");
+      return;
+    }
+    setQi(qi + 1);
+    setSelected(null);
+    setRevealed(false);
+    setTimeLeft(25);
+    setTimerOn(true);
+  };
+
+  const resetGame = () => {
+    setPhase("home");
+    setName("");
+    setSelected(null);
+    setRevealed(false);
+  };
+
+  const font = "'Outfit', 'Segoe UI', system-ui, sans-serif";
+  const link = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap";
+
+  // ── HOME ──────────────────────────────────────────────────────────────
+  if (phase === "home") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#080B12", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: font }}>
+        <link href={link} rel="stylesheet" />
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.08) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(14,165,233,0.06) 0%, transparent 60%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 480, width: "100%", position: "relative", zIndex: 1 }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 100, padding: "6px 16px", marginBottom: 24 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#7C3AED" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 2, color: "#A78BFA", textTransform: "uppercase" }}>Scrut Design Team</span>
+            </div>
+            <h1 style={{ fontSize: 48, fontWeight: 900, color: "#F1F5F9", margin: "0 0 8px", lineHeight: 1.05, letterSpacing: "-0.03em" }}>Know Your<br /><span style={{ background: "linear-gradient(135deg, #7C3AED, #06B6D4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Boundaries</span></h1>
+            <p style={{ color: "#64748B", fontSize: 16, lineHeight: 1.6, maxWidth: 360, margin: "16px auto 0" }}>12 real-world scenarios. What do designers own? When should you push back? How do you say it?</p>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#64748B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8, paddingLeft: 4 }}>Your name</label>
+            <input
+              type="text" value={name} autoFocus
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && startGame()}
+              placeholder="Enter your name to begin"
+              style={{ width: "100%", padding: "14px 18px", background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 14, color: "#F1F5F9", fontSize: 17, fontFamily: font, outline: "none", boxSizing: "border-box", transition: "border 0.2s" }}
+            />
+          </div>
+
+          <button onClick={startGame} disabled={!name.trim()} style={{
+            width: "100%", padding: "16px 0", borderRadius: 14, border: "none",
+            background: name.trim() ? "linear-gradient(135deg, #7C3AED, #6D28D9)" : "rgba(255,255,255,0.04)",
+            color: name.trim() ? "#fff" : "#475569", fontSize: 17, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
+            fontFamily: font, letterSpacing: "0.01em", transition: "all 0.2s",
+            boxShadow: name.trim() ? "0 4px 32px rgba(124,58,237,0.25)" : "none"
+          }}>
+            Start Quiz →
+          </button>
+
+          {/* Mini rules */}
+          <div style={{ marginTop: 28, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {[
+              { icon: "⏱", label: "25s per question" },
+              { icon: "⚡", label: "Speed bonus points" },
+              { icon: "🏆", label: "Shared leaderboard" },
+            ].map((r, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: "14px 12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>{r.icon}</div>
+                <div style={{ color: "#64748B", fontSize: 12, fontWeight: 500 }}>{r.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Leaderboard preview */}
+          {lbLoaded && leaderboard.length > 0 && (
+            <div style={{ marginTop: 32 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Recent scores</div>
+              {leaderboard.slice(0, 5).map((e, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 10, background: i === 0 ? "rgba(124,58,237,0.08)" : "transparent", marginBottom: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 14, width: 24, color: i === 0 ? "#A78BFA" : "#475569", fontWeight: 700 }}>{["🥇","🥈","🥉","4.","5."][i]}</span>
+                    <span style={{ color: "#CBD5E1", fontSize: 14, fontWeight: 500 }}>{e.name}</span>
+                  </div>
+                  <span style={{ color: i === 0 ? "#A78BFA" : "#64748B", fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{e.score} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── PLAY ──────────────────────────────────────────────────────────────
+  if (phase === "play") {
+    const q = questions[qi];
+    const cc = CAT_COLORS[q.cat] || { bg: "#64748B", light: "#F1F5F9" };
+    const progress = ((qi) / questions.length) * 100;
+    const timerPct = (timeLeft / 25) * 100;
+
+    return (
+      <div style={{ minHeight: "100vh", background: "#080B12", fontFamily: font, padding: "16px 20px 32px" }}>
+        <link href={link} rel="stylesheet" />
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: `radial-gradient(ellipse at 50% 0%, ${cc.bg}11 0%, transparent 50%)`, pointerEvents: "none", transition: "background 0.5s" }} />
+        <div style={{ maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1 }}>
+
+          {/* Top bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(124,58,237,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#A78BFA", fontSize: 13 }}>{name[0]}</div>
+              <span style={{ color: "#94A3B8", fontSize: 14, fontWeight: 500 }}>{name}</span>
+            </div>
+            <div style={{ color: "#A78BFA", fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{score} pts</div>
+          </div>
+
+          {/* Progress */}
+          <div style={{ height: 3, borderRadius: 3, background: "rgba(255,255,255,0.06)", marginBottom: 20, overflow: "hidden" }}>
+            <div style={{ width: `${progress}%`, height: "100%", background: `linear-gradient(90deg, ${cc.bg}, #06B6D4)`, transition: "width 0.5s ease", borderRadius: 3 }} />
+          </div>
+
+          {/* Category + Timer + Counter */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, background: `${cc.bg}20`, color: cc.bg, fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>{q.cat}</span>
+              <span style={{ color: "#334155", fontSize: 12 }}>·</span>
+              <span style={{ color: "#475569", fontSize: 12, fontWeight: 500 }}>{qi + 1}/{questions.length}</span>
+              {q.difficulty === "Hard" && <span style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(239,68,68,0.12)", color: "#EF4444", fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>HARD</span>}
+            </div>
+            {!revealed && (
+              <div style={{ position: "relative", width: 44, height: 44 }}>
+                <svg width={44} height={44} viewBox="0 0 44 44" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx={22} cy={22} r={18} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3} />
+                  <circle cx={22} cy={22} r={18} fill="none" stroke={timeLeft <= 8 ? "#EF4444" : timeLeft <= 15 ? "#F59E0B" : "#10B981"} strokeWidth={3}
+                    strokeDasharray={`${2 * Math.PI * 18}`} strokeDashoffset={`${2 * Math.PI * 18 * (1 - timerPct / 100)}`}
+                    strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }} />
+                </svg>
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 14, fontWeight: 800, color: timeLeft <= 8 ? "#EF4444" : timeLeft <= 15 ? "#F59E0B" : "#10B981",
+                  fontVariantNumeric: "tabular-nums" }}>{timeLeft}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Scenario card */}
+          <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: "18px 22px", marginBottom: 16, borderLeft: `3px solid ${cc.bg}40` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "#475569", textTransform: "uppercase", marginBottom: 8 }}>Scenario</div>
+            <div style={{ color: "#CBD5E1", fontSize: 15, lineHeight: 1.75 }}>{q.scenario}</div>
+          </div>
+
+          {/* Question */}
+          <h2 style={{ color: "#F1F5F9", fontSize: 20, fontWeight: 700, marginBottom: 18, lineHeight: 1.4, margin: "0 0 18px" }}>{q.question}</h2>
+
+          {/* Options */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {q.options.map((opt, i) => {
+              const isSel = selected === i;
+              const isCorr = i === q.correct;
+              let bg = "rgba(255,255,255,0.025)";
+              let border = "rgba(255,255,255,0.06)";
+              let tc = "#CBD5E1";
+              let badge = { bg: "rgba(255,255,255,0.05)", color: "#64748B" };
+
+              if (revealed) {
+                if (isCorr) { bg = "rgba(16,185,129,0.1)"; border = "rgba(16,185,129,0.3)"; tc = "#10B981"; badge = { bg: "#10B981", color: "#fff" }; }
+                else if (isSel) { bg = "rgba(239,68,68,0.08)"; border = "rgba(239,68,68,0.25)"; tc = "#EF4444"; badge = { bg: "#EF4444", color: "#fff" }; }
+                else { tc = "#334155"; }
+              }
+
+              return (
+                <button key={i} onClick={() => !revealed && doAnswer(i)} disabled={revealed} style={{
+                  display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: bg,
+                  border: `1.5px solid ${border}`, borderRadius: 13, cursor: revealed ? "default" : "pointer",
+                  textAlign: "left", transition: "all 0.15s", fontFamily: font, outline: "none"
+                }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: badge.bg, color: badge.color, fontSize: 12, fontWeight: 700, transition: "all 0.2s" }}>
+                    {revealed ? (isCorr ? "✓" : isSel ? "✗" : String.fromCharCode(65 + i)) : String.fromCharCode(65 + i)}
+                  </span>
+                  <span style={{ color: tc, fontSize: 15, lineHeight: 1.55, fontWeight: (isSel || (revealed && isCorr)) ? 600 : 400, transition: "color 0.2s" }}>{opt}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Explanation */}
+          {revealed && (
+            <div style={{
+              marginTop: 16, borderRadius: 14, padding: "18px 20px",
+              background: selected === q.correct ? "rgba(16,185,129,0.06)" : "rgba(239,68,68,0.04)",
+              border: `1px solid ${selected === q.correct ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.1)"}`,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: selected === q.correct ? "#10B981" : selected === null ? "#F59E0B" : "#EF4444", marginBottom: 8 }}>
+                {selected === q.correct ? `Correct! +${answers[answers.length - 1]?.pts || 10} points` : selected === null ? "Time's up — 0 points" : "Not quite — 0 points"}
+              </div>
+              <div style={{ color: "#94A3B8", fontSize: 14, lineHeight: 1.75 }}>{q.explain}</div>
+            </div>
+          )}
+
+          {revealed && (
+            <button onClick={nextQ} style={{
+              width: "100%", marginTop: 16, padding: "15px 0", borderRadius: 14, border: "none",
+              background: `linear-gradient(135deg, ${cc.bg}, ${cc.bg}CC)`, color: "#fff",
+              fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: font,
+              boxShadow: `0 4px 24px ${cc.bg}30`
+            }}>
+              {qi + 1 >= questions.length ? "See Results →" : "Next Question →"}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── RESULTS ───────────────────────────────────────────────────────────
+  if (phase === "results") {
+    const total = answers.length;
+    const correct = answers.filter(a => a.ok).length;
+    const pct = Math.round((correct / total) * 100);
+    const catBreakdown = {};
+    answers.forEach(a => {
+      if (!catBreakdown[a.cat]) catBreakdown[a.cat] = { ok: 0, n: 0 };
+      catBreakdown[a.cat].n++;
+      if (a.ok) catBreakdown[a.cat].ok++;
+    });
+    const weakCats = Object.entries(catBreakdown).filter(([, d]) => d.ok < d.n).sort((a, b) => (a[1].ok / a[1].n) - (b[1].ok / b[1].n));
+    const grade = pct >= 90 ? { label: "Design Lead Material", emoji: "🏆", color: "#10B981" } :
+                  pct >= 70 ? { label: "Solid Contributor", emoji: "💪", color: "#06B6D4" } :
+                  pct >= 50 ? { label: "Getting There", emoji: "📈", color: "#F59E0B" } :
+                              { label: "Review the Docs", emoji: "📚", color: "#EF4444" };
+
+    return (
+      <div style={{ minHeight: "100vh", background: "#080B12", fontFamily: font, padding: "24px 20px 40px" }}>
+        <link href={link} rel="stylesheet" />
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.06) 0%, transparent 50%)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 560, margin: "0 auto", position: "relative", zIndex: 1 }}>
+
+          {/* Score hero */}
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <div style={{ fontSize: 56, marginBottom: 8 }}>{grade.emoji}</div>
+            <h1 style={{ fontSize: 36, fontWeight: 900, color: "#F1F5F9", margin: "0 0 4px", letterSpacing: "-0.02em" }}>{score} points</h1>
+            <div style={{ color: grade.color, fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{grade.label}</div>
+            <div style={{ color: "#64748B", fontSize: 14 }}>{correct}/{total} correct · {pct}% accuracy</div>
+          </div>
+
+          {/* Category breakdown */}
+          <div style={{ background: "rgba(255,255,255,0.025)", borderRadius: 16, padding: "20px 22px", marginBottom: 20, border: "1px solid rgba(255,255,255,0.04)" }}>
+            <h3 style={{ color: "#94A3B8", fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 16px" }}>Category Breakdown</h3>
+            {Object.entries(catBreakdown).map(([cat, d]) => {
+              const cc = CAT_COLORS[cat] || { bg: "#64748B" };
+              const r = d.ok / d.n;
+              return (
+                <div key={cat} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 110, flexShrink: 0 }}>
+                    <span style={{ color: "#94A3B8", fontSize: 13, fontWeight: 500 }}>{cat}</span>
+                  </div>
+                  <div style={{ flex: 1, height: 6, borderRadius: 4, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                    <div style={{ width: `${r * 100}%`, height: "100%", background: r === 1 ? "#10B981" : cc.bg, borderRadius: 4, transition: "width 0.6s ease" }} />
+                  </div>
+                  <span style={{ color: r === 1 ? "#10B981" : "#64748B", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", width: 36, textAlign: "right" }}>{d.ok}/{d.n}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Weak areas */}
+          {weakCats.length > 0 && (
+            <div style={{ background: "rgba(239,68,68,0.04)", borderRadius: 14, padding: "16px 20px", marginBottom: 20, border: "1px solid rgba(239,68,68,0.08)" }}>
+              <h3 style={{ color: "#F87171", fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>Areas to revisit</h3>
+              {weakCats.slice(0, 3).map(([cat, d]) => (
+                <div key={cat} style={{ color: "#CBD5E1", fontSize: 14, lineHeight: 1.7, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600 }}>{cat}</span> — {d.ok}/{d.n} correct. Review the Ownership Reference doc for this topic.
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Leaderboard */}
+          {leaderboard.length > 0 && (
+            <div style={{ background: "rgba(255,255,255,0.025)", borderRadius: 16, padding: "20px 22px", marginBottom: 20, border: "1px solid rgba(255,255,255,0.04)" }}>
+              <h3 style={{ color: "#94A3B8", fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 14px" }}>Leaderboard</h3>
+              {leaderboard.slice(0, 8).map((e, i) => {
+                const isMe = e.name === name.trim() && e.score === score;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 12px", borderRadius: 10, background: isMe ? "rgba(124,58,237,0.08)" : "transparent", marginBottom: 2 }}>
+                    <span style={{ width: 28, fontSize: 14, color: ["#F59E0B", "#94A3B8", "#CD7F32"][i] || "#475569", fontWeight: 800 }}>{i < 3 ? ["🥇","🥈","🥉"][i] : `${i+1}.`}</span>
+                    <span style={{ flex: 1, color: isMe ? "#A78BFA" : "#CBD5E1", fontSize: 14, fontWeight: isMe ? 700 : 500 }}>{e.name}{isMe ? " (you)" : ""}</span>
+                    <span style={{ color: isMe ? "#A78BFA" : "#64748B", fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{e.score}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* GitHub hosting instructions */}
+          <div style={{ background: "rgba(255,255,255,0.025)", borderRadius: 16, padding: "20px 22px", marginBottom: 24, border: "1px solid rgba(255,255,255,0.04)" }}>
+            <h3 style={{ color: "#94A3B8", fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 12px" }}>Share with your team</h3>
+            <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.7, margin: "0 0 6px" }}>
+              Send this game link to your teammates — everyone plays individually and scores appear on the shared leaderboard above.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { resetGame(); }} style={{
+              flex: 1, padding: "15px 0", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.08)",
+              background: "transparent", color: "#94A3B8", fontSize: 15, fontWeight: 600,
+              cursor: "pointer", fontFamily: font
+            }}>
+              Home
+            </button>
+            <button onClick={() => { setPhase("home"); setName(""); }} style={{
+              flex: 1, padding: "15px 0", borderRadius: 14, border: "none",
+              background: "linear-gradient(135deg, #7C3AED, #6D28D9)", color: "#fff",
+              fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: font,
+              boxShadow: "0 4px 24px rgba(124,58,237,0.25)"
+            }}>
+              Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+  </script>
+</body>
+</html>
