@@ -57,11 +57,11 @@ const QUESTIONS = [
     question: "As the designer on this pod, what should you do?",
     options: [
       "Open Figma and start designing the dropdown — Neha gave clear specs",
-      "Push back — the statement describes a UI component, not a user problem. Ask Neha to reframe it as the user's pain.",
       "Design the dropdown and also add a few alternative options for Neha to choose from",
+      "Push back — the statement describes a UI component, not a user problem. Ask Neha to reframe it as the user's pain.",
       "Forward it to the dev team and ask them to build a prototype first"
     ],
-    correct: 1,
+    correct: 2,
     explain: "\"Add a dropdown\" is a solution, not a problem. The designer must ask: What's the user trying to accomplish? Why is the current experience painful? A valid problem statement would be: \"Compliance managers spend 20–40 min manually updating 50+ controls one by one.\""
   },
   {
@@ -69,12 +69,12 @@ const QUESTIONS = [
     scenario: "Arjun (PM) sends over a PRD for a new dashboard widget. Under Target Users, it says: \"This feature is for all users of the Scrut platform.\"",
     question: "Should you proceed with the design?",
     options: [
-      "Yes — designing for everyone means the feature will be widely useful",
       "No — \"all users\" is not a persona. Ask Arjun to name the specific role (e.g., Compliance Manager vs CISO), plan tier, and typical context.",
+      "Yes — designing for everyone means the feature will be widely useful",
       "Yes, but design for Admin users first since they have the most permissions",
       "Skip this section — target users don't really affect the design"
     ],
-    correct: 1,
+    correct: 0,
     explain: "A CISO needs a summary view; a Compliance Manager needs action-oriented detail. These are different designs. Without a named persona, the designer cannot make hierarchy, prominence, or navigation decisions. This is a Hard Block."
   },
   {
@@ -83,11 +83,11 @@ const QUESTIONS = [
     question: "What's wrong here?",
     options: [
       "Nothing — this level of detail helps the designer work faster",
-      "Meera is prescribing UI components. The designer should ask her to reframe as outcomes and constraints instead.",
       "The dropdown is the wrong component — it should be a search field",
-      "The design is fine but Meera should have used Figma instead of words"
+      "The design is fine but Meera should have used Figma instead of words",
+      "Meera is prescribing UI components. The designer should ask her to reframe as outcomes and constraints instead."
     ],
-    correct: 1,
+    correct: 3,
     explain: "PMs own constraints and outcomes: 'Must work for 1–200 controls without navigating away from the table.' Designers own the interaction pattern. When a PM specifies modals, tabs, and dropdowns, the designer loses the ability to explore if a floating action bar, side panel, or inline editing is better."
   },
   {
@@ -109,11 +109,11 @@ const QUESTIONS = [
     question: "What should you flag before starting design?",
     options: [
       "Nothing — this covers the main flow clearly",
-      "Missing: What happens when the file is too large? When the upload fails? When the user has no upload permission? What's the empty state before any evidence exists?",
       "The flow should include the color scheme for the upload button",
+      "Missing: What happens when the file is too large? When the upload fails? When the user has no upload permission? What's the empty state before any evidence exists?",
       "Priya should have drawn this in Figma instead of writing it"
     ],
-    correct: 1,
+    correct: 2,
     explain: "A PM's conceptual flow covers the happy path. The designer owns all detailed states — but needs the PM to have documented at least one alternate/error path. Key gaps here: file size limit, API failure, permission-denied (Viewer role), empty state, upload progress state, and post-upload confirmation."
   },
   {
@@ -121,12 +121,12 @@ const QUESTIONS = [
     scenario: "Ravi (PM) marks RBAC as 'Yes — Impacted' in the Product Impact Checklist for the Vendor Risk Score feature. But there is no permission model anywhere in the PRD. You ask Ravi and he says: \"Just design for the Admin view, we'll figure out the other roles later.\"",
     question: "What's the right call?",
     options: [
-      "Design for Admin only and add a note to revisit",
       "Hard Block. Insist Ravi defines which roles (Admin / Editor / Viewer / Guest) can see and do what before you start. The permission model drives what renders in the UI.",
+      "Design for Admin only and add a note to revisit",
       "Design all possible RBAC variations and let Ravi pick later",
       "Ask the backend team what roles exist in the codebase"
     ],
-    correct: 1,
+    correct: 0,
     explain: "RBAC isn't a detail to add later — it determines which UI elements exist at all. A Viewer might not see the action bar. A Guest might not see the feature. Designing for 'Admin only' then retrofitting other roles always causes rework. This is a Hard Block."
   },
   {
@@ -135,11 +135,11 @@ const QUESTIONS = [
     question: "What do you do?",
     options: [
       "Add it to your design — it's clearly needed",
-      "Raise it immediately with the PM. Present two options: (A) include in v1 with a timeline impact, or (B) defer it and design a degraded state for v1.",
       "Skip it — if the PRD says out of scope, it's out of scope",
-      "Ask the developer to build it anyway since it's small"
+      "Ask the developer to build it anyway since it's small",
+      "Raise it immediately with the PM. Present two options: (A) include in v1 with a timeline impact, or (B) defer it and design a degraded state for v1."
     ],
-    correct: 1,
+    correct: 3,
     explain: "Scope decisions belong to the PM. The designer's job is to flag the gap the moment it's discovered, present clear options with tradeoffs, and let the PM decide. Never silently add scope, and never silently ignore a dependency you've identified."
   },
   {
@@ -160,12 +160,12 @@ const QUESTIONS = [
     scenario: "Sanya (Designer) runs 3 user interviews for the Controls bulk-action feature. All 3 users instinctively tried Ctrl+Click to multi-select — none knew what a command palette was. The PM (Arjun) had assumed command palette was the preferred approach.",
     question: "What should Sanya do with these findings?",
     options: [
-      "Ignore the research — the PRD is already approved and the sprint has started",
       "Present findings to Arjun + Tech Lead. Pause the current direction and request PRD update before continuing to handoff.",
+      "Ignore the research — the PRD is already approved and the sprint has started",
       "Redesign silently using the checkbox approach and surprise Arjun at review",
       "Run 10 more interviews to get a bigger sample size before saying anything"
     ],
-    correct: 1,
+    correct: 0,
     explain: "When research invalidates a PRD assumption, the designer must pause and present findings formally. The PRD needs to be updated before design goes to dev. Redesigning silently creates misalignment; ignoring research wastes the effort. Present, align, then proceed."
   },
   {
@@ -174,11 +174,11 @@ const QUESTIONS = [
     question: "Should you proceed to handoff?",
     options: [
       "Yes — devs can use their judgement for edge cases",
-      "No. Your design spec must cover every state — happy path, empty, error, loading, and permission-based — before handoff. Incomplete design causes inconsistent dev interpretation.",
       "Yes, but add a Figma comment saying 'TBD' on the missing states",
-      "Yes — those are minor states that can be patched after launch"
+      "Yes — those are minor states that can be patched after launch",
+      "No. Your design spec must cover every state — happy path, empty, error, loading, and permission-based — before handoff. Incomplete design causes inconsistent dev interpretation."
     ],
-    correct: 1,
+    correct: 3,
     explain: "Incomplete design handoff is as costly as an incomplete PRD. Every state left undesigned becomes a state the developer interprets alone — leading to inconsistency, bugs, and post-launch patches. Handoff is a joint quality gate."
   },
   {
@@ -187,11 +187,11 @@ const QUESTIONS = [
     question: "What should you contribute?",
     options: [
       "Nothing — metrics are entirely the PM's responsibility",
-      "UX-specific signals: first-attempt task completion rate (target >85%), undo usage rate (if >15%, the confirmation flow may need redesign), and flow drop-off point analysis",
       "Increase the adoption target to 60% to be more ambitious",
+      "UX-specific signals: first-attempt task completion rate (target >85%), undo usage rate (if >15%, the confirmation flow may need redesign), and flow drop-off point analysis",
       "Add 'NPS score' as a success metric"
     ],
-    correct: 1,
+    correct: 2,
     explain: "Designers don't own success metrics but contribute UX-level signals that PM metrics won't capture. Undo rate tells you if the confirmation flow works. Drop-off analysis tells you where users abandon. First-attempt completion tells you if the flow is intuitive. These complement business metrics."
   },
   {
@@ -213,11 +213,11 @@ const QUESTIONS = [
     question: "How should you respond?",
     options: [
       "Yes, defer it — less scope means faster delivery",
-      "This is a PM scope decision. Tell Vikram you'll flag it to the PM, then raise it with Meera (PM) to decide.",
       "No, keep it — the design already accounts for it",
-      "Let Vikram decide since he understands the technical cost"
+      "Let Vikram decide since he understands the technical cost",
+      "This is a PM scope decision. Tell Vikram you'll flag it to the PM, then raise it with Meera (PM) to decide."
     ],
-    correct: 1,
+    correct: 3,
     explain: "What ships vs what gets deferred is a PM decision. Designers can flag complexity and tradeoffs, but they don't unilaterally make scope calls. Redirect the developer to the PM. Your job: present the design impact of both options so the PM can decide informed."
   },
   {
@@ -225,12 +225,12 @@ const QUESTIONS = [
     scenario: "You open Ravi's PRD for a new Trust Vault feature. The Product Impact Checklist has 4 rows left completely blank — Notifications, Audit Logs, Mixpanel, and Task Center.",
     question: "What should you do?",
     options: [
-      "Assume they're all 'N/A' and proceed",
       "Soft Block. Ask Ravi to mark every row Yes / No / N/A. Blank rows mean you can't assess design scope — Notifications alone could add 3 design surfaces.",
+      "Assume they're all 'N/A' and proceed",
       "Only flag the Notifications row since that's the most design-heavy",
       "Fill them in yourself based on your best guess"
     ],
-    correct: 1,
+    correct: 0,
     explain: "Each 'Yes' in the checklist has direct design implications. Notifications = in-app + email + Slack states. Audit Logs = a read-only view surface. Task Center = a new card design. Blank rows aren't 'no' — they're unknown. The designer must ask, because a surprise 'Yes' mid-sprint causes scope creep."
   },
   {
@@ -239,11 +239,11 @@ const QUESTIONS = [
     question: "Which questions block you from starting design?",
     options: [
       "All three — every question must be answered first",
-      "Q1 and Q2 are Hard Blocks (RBAC affects what renders; scope affects how many flows to design). Q3 is advisory — illustration style can be decided during design.",
       "None — you can make assumptions and check later",
+      "Q1 and Q2 are Hard Blocks (RBAC affects what renders; scope affects how many flows to design). Q3 is advisory — illustration style can be decided during design.",
       "Only Q3 — visual style is the designer's biggest concern"
     ],
-    correct: 1,
+    correct: 2,
     explain: "The test: does getting this wrong mean the design has to be substantially rethought? Q1 (RBAC) determines which UI elements exist. Q2 (scope) determines how many interaction patterns to build. Getting either wrong = rework. Q3 (style) can be explored and changed cheaply during design."
   },
   {
@@ -265,11 +265,11 @@ const QUESTIONS = [
     question: "Should you start designing?",
     options: [
       "Yes — the problem seems reasonable and obvious",
-      "No — Hard Block. Ask Priya for at least one evidence link (customer feedback, support ticket, Mixpanel data). Without evidence, the designer is solving an assumed problem.",
       "Yes, but design a simple version first to test",
-      "Ask the customer success team yourself for evidence"
+      "Ask the customer success team yourself for evidence",
+      "No — Hard Block. Ask Priya for at least one evidence link (customer feedback, support ticket, Mixpanel data). Without evidence, the designer is solving an assumed problem."
     ],
-    correct: 1,
+    correct: 3,
     explain: "Unsupported problem statements lead to designs that solve imagined pain. Evidence also tells the designer which user segment to prioritise, what 'done' looks like, and how severe the problem is. Finding evidence is the PM's job — the designer's job is to insist it exists before committing design time."
   },
   {
@@ -277,12 +277,12 @@ const QUESTIONS = [
     scenario: "You've been getting incomplete PRDs from Karan (PM) for the third sprint in a row. Each time you flag gaps, he resolves them eventually, but the pattern is wasting your review cycles.",
     question: "What's the appropriate escalation?",
     options: [
-      "Confront Karan directly about the pattern",
       "Raise it with the Design Lead, who raises it with the PM Lead. Patterns of incomplete PRDs are a process issue, not a personal one — addressed in retro or 1:1, not by the designer confronting the PM.",
+      "Confront Karan directly about the pattern",
       "Start accepting the incomplete PRDs to maintain the relationship",
       "Refuse to work with Karan until he improves"
     ],
-    correct: 1,
+    correct: 0,
     explain: "Individual pushback handles individual PRDs. Patterns need a process fix. The Design Lead raises it with the PM Lead — not to blame Karan, but to identify whether it's a training gap, a workload issue, or a template problem. Escalation is structural, not personal."
   },
 ];
